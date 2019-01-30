@@ -49,36 +49,75 @@ client.on('connect', connack => {
 client.on('error', debug.bind(null, 'error'));
 
 client.on('message', (topic, message, packet) => {
-  debug('message', topic, message, packet);
+  debug('message', topic, message.toString(), packet);
 
   let messageString = message.toString();
   let messageObject = IS_JSON.test(messageString) ? JSON.parse(messageString) : undefined;
 
-  let options = HTTP_REQUEST ? JSON.parse(HTTP_REQUEST({
-    topic: topic,
-    message: messageObject || messageString
-  })) : {};
-
-  if (messageObject && HTTP_JSON) {
+  //debug('messageObject',messageObject)
+  // let options = HTTP_REQUEST ? JSON.parse(HTTP_REQUEST({
+  //   topic: topic,
+  //   message: messageObject || messageString
+  // })) : {};
+  let options = {};
+  if(HTTP_URL){
+    options.uri = HTTP_URL;
+  }
+  if(topic == 'airsence/wills/server'){
     options.json = true;
     options.body = {
-      topic: topic,
-      message: messageObject
+      value1:topic,
+      value2:"AirSENCE Server Computer is Down",
+      value3:messageString
     };
+    if (HTTP_URL) {
+      options.uri = HTTP_URL;
+    }
+    debug('request', options);
+
+    if (!DEBUG_NOOP) {
+      request(options, (error, response, body) => debug.bind(null, 'response'));
+    }
+  }
+  if(topic == 'airsence/server/status'){
+    let apache_status = messageObject ? messageObject.A : parseInt(messageString[messageString.length - 8]);
+    let mysql_status = messageObject ? messageObject.M : parseInt(messageString[messageString.length - 2]);
+    if(!(apache_status && mysql_status) && messageString){
+      options.json = true;
+      options.body = {
+        value1:topic,
+        value2:"AirSENCE Server Service is Down",
+        value3:messageString
+      };
+      if (HTTP_URL) {
+        options.uri = HTTP_URL;
+      }
+      debug('request', options);
+
+      if (!DEBUG_NOOP) {
+        request(options, (error, response, body) => debug.bind(null, 'response'));
+      }
+    }
+
   }
 
-  if (HTTP_URL) {
-    options.uri = HTTP_URL({
-      topic: topic,
-      message: messageObject || messageString
-    });
-  }
 
-  debug('request', options);
+  // if (messageObject && HTTP_JSON) {
+  //   options.json = true;
+  //   options.body = {
+  //     topic: topic,
+  //     message: messageObject
+  //   };
+  // }
 
-  if (!DEBUG_NOOP) {
-    request(options, (error, response, body) => debug.bind(null, 'response'));
-  }
+  // if (HTTP_URL) {
+  //   options.uri = HTTP_URL({
+  //     topic: topic,
+  //     message: messageObject || messageString
+  //   });
+  // }
+
+
 });
 
 if (DEBUG_PUBLISH > 0) {
