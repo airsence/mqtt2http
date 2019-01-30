@@ -37,7 +37,7 @@ if (MQTT_PASSWORD) {
 }
 
 let client = MQTT_URL ? mqtt.connect(MQTT_URL, MQTT_CONNECT) : mqtt.connect(MQTT_CONNECT);
-
+let retained = true;
 client.on('connect', connack => {
   debug('connect', connack);
 
@@ -64,20 +64,26 @@ client.on('message', (topic, message, packet) => {
     options.uri = HTTP_URL;
   }
   if(topic == 'airsence/wills/server'){
-    options.json = true;
-    options.body = {
-      value1:topic,
-      value2:"AirSENCE Server Computer is Down",
-      value3:messageString
-    };
-    if (HTTP_URL) {
-      options.uri = HTTP_URL;
+    if(retained){
+      retained = false;
     }
-    debug('request', options);
+    else{
+      options.json = true;
+      options.body = {
+        value1:topic,
+        value2:"AirSENCE Server Computer is Down",
+        value3:messageString
+      };
+      if (HTTP_URL) {
+        options.uri = HTTP_URL;
+      }
+      debug('request', options);
+  
+      if (!DEBUG_NOOP) {
+        request(options, (error, response, body) => debug.bind(null, 'response'));
+      }
+    }
 
-    if (!DEBUG_NOOP) {
-      request(options, (error, response, body) => debug.bind(null, 'response'));
-    }
   }
   if(topic == 'airsence/server/status'){
     let apache_status = messageObject ? messageObject.A : parseInt(messageString[messageString.length - 8]);
