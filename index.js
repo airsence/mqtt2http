@@ -5,7 +5,7 @@ require('dotenv').config({
 const mqtt = require('mqtt');
 const request = require('request');
 const Handlebars = require('handlebars');
-const express = require('express');
+
 Handlebars.registerHelper('stringify', object => {
   return new Handlebars.SafeString(JSON.stringify(object));
 });
@@ -35,11 +35,7 @@ if (MQTT_USERNAME) {
 if (MQTT_PASSWORD) {
   MQTT_CONNECT.password = MQTT_PASSWORD;
 }
-let app = express();
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Our app is running on port ${ PORT }`);
-});
+
 let client = MQTT_URL ? mqtt.connect(MQTT_URL, MQTT_CONNECT) : mqtt.connect(MQTT_CONNECT);
 
 client.on('connect', connack => {

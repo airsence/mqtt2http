@@ -61,10 +61,6 @@
     "DEBUG_NOOP": {
       "description": "Set to a truthy string (e.g. `1`) to not actually make the HTTP request.",
       "required": false
-    },
-    "PORT":{
-      "description":"Default port for the APP",
-      "required":false
     }
   },
   "website": "https://github.com/fokkezb/mqtt2http#README"
