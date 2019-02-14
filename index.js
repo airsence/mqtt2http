@@ -28,6 +28,7 @@ const HTTP_URL = process.env.HTTP_URL ? Handlebars.compile(process.env.HTTP_URL)
 const HTTP_JSON = !!process.env.HTTP_JSON;
 const HTTP_REQUEST = process.env.HTTP_REQUEST ? Handlebars.compile(process.env.HTTP_REQUEST) : undefined;
 
+
 if (MQTT_USERNAME) {
   MQTT_CONNECT.username = MQTT_USERNAME;
 }
@@ -37,7 +38,7 @@ if (MQTT_PASSWORD) {
 }
 
 let client = MQTT_URL ? mqtt.connect(MQTT_URL, MQTT_CONNECT) : mqtt.connect(MQTT_CONNECT);
-
+let serverDownTimer = setTimeout(serverDownHandler,1000*60*70);
 client.on('connect', connack => {
   debug('connect', connack);
 
@@ -50,7 +51,8 @@ client.on('error', debug.bind(null, 'error'));
 
 client.on('message', (topic, message, packet) => {
   debug('message', topic, message.toString(), packet);
-
+  clearTimeout(serverDownTimer);
+  serverDownTimer = setTimeout(serverDownHandler,1000*60*70);
   let messageString = message.toString();
   let messageObject = IS_JSON.test(messageString) ? JSON.parse(messageString) : undefined;
 
@@ -63,12 +65,31 @@ client.on('message', (topic, message, packet) => {
   if(HTTP_URL){
     options.uri = HTTP_URL;
   }
-  if(topic == 'airsence/wills/server'){
+  // if(topic == 'airsence/wills/server'){
+  //   options.json = true;
+  //   options.body = {
+  //     value1:topic,
+  //     value2:"AirSENCE Server Computer is Down",
+  //     value3:messageString
+  //   };
+  //   if (HTTP_URL) {
+  //     options.uri = HTTP_URL;
+  //   }
+  //   debug('request', options);
+
+  //   if (!DEBUG_NOOP) {
+  //     request(options, (error, response, body) => debug.bind(null, 'response'));
+  //   }
+  // }
+  // if(topic == 'airsence/server/status'){
+  let apache_status = messageObject ? messageObject.A : parseInt(messageString[messageString.length - 8]);
+  let mysql_status = messageObject ? messageObject.M : parseInt(messageString[messageString.length - 2]);
+  if (!(apache_status && mysql_status) && messageString) {
     options.json = true;
     options.body = {
-      value1:topic,
-      value2:"AirSENCE Server Computer is Down",
-      value3:messageString
+      value1: topic,
+      value2: "AirSENCE Server Service is Down",
+      value3: messageString
     };
     if (HTTP_URL) {
       options.uri = HTTP_URL;
@@ -79,27 +100,8 @@ client.on('message', (topic, message, packet) => {
       request(options, (error, response, body) => debug.bind(null, 'response'));
     }
   }
-  if(topic == 'airsence/server/status'){
-    let apache_status = messageObject ? messageObject.A : parseInt(messageString[messageString.length - 8]);
-    let mysql_status = messageObject ? messageObject.M : parseInt(messageString[messageString.length - 2]);
-    if(!(apache_status && mysql_status) && messageString){
-      options.json = true;
-      options.body = {
-        value1:topic,
-        value2:"AirSENCE Server Service is Down",
-        value3:messageString
-      };
-      if (HTTP_URL) {
-        options.uri = HTTP_URL;
-      }
-      debug('request', options);
 
-      if (!DEBUG_NOOP) {
-        request(options, (error, response, body) => debug.bind(null, 'response'));
-      }
-    }
-
-  }
+  // }
 
 
   // if (messageObject && HTTP_JSON) {
@@ -134,4 +136,27 @@ function debug(...args) {
   }
   args.unshift('[DEBUG]');
   console.log.apply(null, args);
+}
+
+function serverDownHandler(){
+  let options = {};
+  if(HTTP_URL){
+    options.uri = HTTP_URL;
+  }
+
+  options.json = true;
+  options.body = {
+    value1: topic,
+    value2: "AirSENCE Server Computer is Down",
+    value3: messageString
+  };
+  if (HTTP_URL) {
+    options.uri = HTTP_URL;
+  }
+  debug('request', options);
+
+  if (!DEBUG_NOOP) {
+    request(options, (error, response, body) => debug.bind(null, 'response'));
+  }
+  
 }
